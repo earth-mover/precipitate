@@ -14,6 +14,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ["@earthmover/icechunk", "@earthmover/icechunk-wasm32-wasi"],
+    include: ["@earthmover/icechunk > @earthmover/icechunk/fetch-storage"],
   },
   server: {
     headers: {

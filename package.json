@@ -13,10 +13,11 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
-    "@earthmover/icechunk": "^2.0.0-alpha.11",
+    "@earthmover/icechunk": "^2.0.0-alpha.12",
     "@fontsource-variable/geist": "^5.2.8",
     "@tabler/icons-react": "^3.41.1",
     "@tailwindcss/vite": "^4.2.1",
+    "@tanstack/react-query": "^5.96.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "react": "^19.2.4",
