@@ -1,21 +1,27 @@
-# React + TypeScript + Vite + shadcn/ui
+# Precipitate
 
-This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
+An example web app for viewing precipitation data using Dynamical's Icechunk repos in the browser with wasm
 
-## Adding components
+Try it out: https://precipitate.earthmover-sandbox.workers.dev
 
-To add components to your app, run the following command:
+## Developing
+
+Install the deps
 
 ```bash
-npx shadcn@latest add button
+npm install --cpu=wasm32
 ```
 
-This will place the ui components in the `src/components` directory.
+Then run in dev mode
 
-## Using components
+```bash
+npm run dev
+```
 
-To use the components in your app, import them as follows:
+## Deploy to cloudflare
 
-```tsx
-import { Button } from "@/components/ui/button"
+Use `wrangler` to deploy to cloudflare
+
+```bash
+npx wrangler deploy
 ```
