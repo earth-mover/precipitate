@@ -14,17 +14,15 @@ export const useRepo = ({ url }: { url: string }) => {
   })
 }
 
-export const useLatestCommit = ({
-  url,
-  branch,
-}: {
-  url: string
-  branch?: string
-}) => {
+export const useLatestCommit = ({ url }: { url: string }) => {
   const { data: repo } = useRepo({ url })
   return useQuery({
     queryKey: ["latest-commit", url],
-    queryFn: () => repo!.lookupBranch(branch ?? "main"),
+    queryFn: async () => {
+      const latestCommitHash = await repo!.lookupBranch("main")
+      const latestCommit = await repo?.lookupSnapshot(latestCommitHash)
+      return latestCommit
+    },
     enabled: !!repo,
     staleTime: 30,
   })
