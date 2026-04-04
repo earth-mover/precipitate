@@ -4,12 +4,13 @@ import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import wasm from "vite-plugin-wasm"
 import topLevelAwait from "vite-plugin-top-level-await"
+import { cloudflare } from "@cloudflare/vite-plugin"
 
 export default defineConfig({
   build: {
     target: "esnext",
   },
-  plugins: [react(), tailwindcss(), wasm(), topLevelAwait()],
+  plugins: [cloudflare(), react(), tailwindcss(), wasm(), topLevelAwait()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
