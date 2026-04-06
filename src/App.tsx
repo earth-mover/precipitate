@@ -264,6 +264,16 @@ export function App() {
           </span>
         </div>
       </div>
+      <footer className="mt-auto pt-4 text-center text-xs text-muted-foreground">
+        <a
+          href="https://github.com/mpiannucci/precipitate"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-foreground"
+        >
+          Fork me on GitHub
+        </a>
+      </footer>
     </div>
   )
 }
