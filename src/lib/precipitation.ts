@@ -10,8 +10,6 @@ const LAT_ORIGIN = 54.995
 const LON_ORIGIN = -129.995
 const STEP = 0.01
 
-const NUM_POINTS = 24
-
 function latIndex(lat: number) {
   return Math.round((LAT_ORIGIN - lat) / STEP)
 }
@@ -19,11 +17,11 @@ function lonIndex(lon: number) {
   return Math.round((lon - LON_ORIGIN) / STEP)
 }
 
-export function usePrecipitation(lat: number, lon: number) {
+export function usePrecipitation(lat: number, lon: number, hours: number = 24) {
   const { data: repo } = useRepo({ url: MRMS_URL })
 
   return useQuery({
-    queryKey: ["precipitation", lat, lon],
+    queryKey: ["precipitation", lat, lon, hours],
     queryFn: async () => {
       const session = await repo!.readonlySession({ branch: "main" })
       const store = session.store
@@ -33,7 +31,8 @@ export function usePrecipitation(lat: number, lon: number) {
       const timeArr = await zarr.open.v3(grp.resolve("/time"), { kind: "array" })
 
       const timeLen = timeArr.shape[0]
-      const tStart = timeLen - NUM_POINTS
+      const numPoints = Math.min(hours, timeLen)
+      const tStart = timeLen - numPoints
       const li = latIndex(lat)
       const lo = lonIndex(lon)
 
@@ -44,7 +43,7 @@ export function usePrecipitation(lat: number, lon: number) {
       const precipData = precipChunk.data as Float32Array
 
       const results: { time: Date; precipInHr: number }[] = []
-      for (let i = 0; i < NUM_POINTS; i++) {
+      for (let i = 0; i < numPoints; i++) {
         const epochSeconds = Number(timeData[i])
         const raw = precipData[i]
         if (Number.isNaN(raw)) continue

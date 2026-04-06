@@ -9,12 +9,22 @@ import { Button } from "./components/ui/button"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "./components/ui/chart"
 import { Tooltip, TooltipTrigger, TooltipContent } from "./components/ui/tooltip"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "./components/ui/dialog"
+import { Popover, PopoverTrigger, PopoverContent } from "./components/ui/popover"
+import { Skeleton } from "./components/ui/skeleton"
 
 const MRMS_URL =
   "https://dynamical-noaa-mrms.s3.us-west-2.amazonaws.com/noaa-mrms-conus-analysis-hourly/v0.3.0.icechunk"
 
 const DEFAULT_LAT = 41
 const DEFAULT_LON = -71
+
+const TIME_RANGES = [
+  { hours: 12, label: "Last 12 hours" },
+  { hours: 24, label: "Last 24 hours" },
+  { hours: 48, label: "Last 48 hours" },
+  { hours: 72, label: "Last 72 hours" },
+  { hours: 168, label: "Last week" },
+] as const
 
 const chartConfig = {
   precipInHr: {
@@ -23,58 +33,67 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-function getInitialLocation(): { lat: number; lon: number } | null {
+function getInitialParams(): { lat?: number; lon?: number; hours?: number } {
   const params = new URLSearchParams(window.location.search)
   const lat = parseFloat(params.get("lat") ?? "")
   const lon = parseFloat(params.get("lon") ?? "")
-  if (!Number.isNaN(lat) && !Number.isNaN(lon)) return { lat, lon }
-  return null
+  const hours = parseInt(params.get("hours") ?? "", 10)
+  return {
+    lat: !Number.isNaN(lat) && !Number.isNaN(lon) ? lat : undefined,
+    lon: !Number.isNaN(lat) && !Number.isNaN(lon) ? lon : undefined,
+    hours: !Number.isNaN(hours) && hours > 0 ? hours : undefined,
+  }
 }
 
 export function App() {
-  const urlLocation = useMemo(getInitialLocation, [])
+  const initialParams = useMemo(getInitialParams, [])
   const geo = useGeolocation()
 
-  const [lat, setLat] = useState<number | null>(urlLocation?.lat ?? null)
-  const [lon, setLon] = useState<number | null>(urlLocation?.lon ?? null)
-  const [inputLat, setInputLat] = useState(urlLocation ? String(urlLocation.lat) : "")
-  const [inputLon, setInputLon] = useState(urlLocation ? String(urlLocation.lon) : "")
+  const [lat, setLat] = useState<number | null>(initialParams.lat ?? null)
+  const [lon, setLon] = useState<number | null>(initialParams.lon ?? null)
+  const [inputLat, setInputLat] = useState(initialParams.lat != null ? String(initialParams.lat) : "")
+  const [inputLon, setInputLon] = useState(initialParams.lon != null ? String(initialParams.lon) : "")
 
   // Sync geolocation into state once it resolves (only if no URL params and user hasn't manually set a location yet)
   useEffect(() => {
-    if (!urlLocation && geo.lat != null && geo.lon != null && lat == null) {
+    if (!initialParams.lat && geo.lat != null && geo.lon != null && lat == null) {
       setLat(geo.lat)
       setLon(geo.lon)
       setInputLat(geo.lat.toFixed(2))
       setInputLon(geo.lon.toFixed(2))
     }
-  }, [geo.lat, geo.lon, lat, urlLocation])
+  }, [geo.lat, geo.lon, lat, initialParams.lat])
 
   // Fall back to defaults and open dialog if geolocation fails or is denied (and no URL params)
   useEffect(() => {
-    if (!urlLocation && !geo.loading && geo.lat == null && lat == null) {
+    if (!initialParams.lat && !geo.loading && geo.lat == null && lat == null) {
       setLat(DEFAULT_LAT)
       setLon(DEFAULT_LON)
       setInputLat(String(DEFAULT_LAT))
       setInputLon(String(DEFAULT_LON))
       setDialogOpen(true)
     }
-  }, [geo.loading, geo.lat, lat, urlLocation])
+  }, [geo.loading, geo.lat, lat, initialParams.lat])
 
-  // Sync location to URL
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [hours, setHours] = useState(initialParams.hours ?? 24)
+  const [rangeOpen, setRangeOpen] = useState(false)
+
+  // Sync location and time range to URL
   useEffect(() => {
     if (lat != null && lon != null) {
       const url = new URL(window.location.href)
       url.searchParams.set("lat", String(lat))
       url.searchParams.set("lon", String(lon))
+      url.searchParams.set("hours", String(hours))
       window.history.replaceState(null, "", url)
     }
-  }, [lat, lon])
+  }, [lat, lon, hours])
 
   const activeLat = lat ?? DEFAULT_LAT
   const activeLon = lon ?? DEFAULT_LON
 
-  const { data, isLoading, error } = usePrecipitation(activeLat, activeLon)
+  const { data, isLoading, error } = usePrecipitation(activeLat, activeLon, hours)
   const latestCommit = useLatestCommit({ url: MRMS_URL })
   const lastUpdated = latestCommit?.data?.writtenAt
 
@@ -82,13 +101,13 @@ export function App() {
     if (!data) return []
     const maxVal = Math.max(...data.map((d) => d.precipInHr))
     return data.map((d) => ({
-      time: d.time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+      time: hours > 24
+        ? d.time.toLocaleString([], { month: "short", day: "numeric", hour: "numeric" })
+        : d.time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
       precipInHr: d.precipInHr,
       isMax: d.precipInHr === maxVal && maxVal > 0,
     }))
-  }, [data])
-
-  const [dialogOpen, setDialogOpen] = useState(false)
+  }, [data, hours])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -107,12 +126,13 @@ export function App() {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-bold">Precipitate</h1>
 
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <button className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
-                {geo.loading ? "Locating..." : `${Math.abs(activeLat).toFixed(2)}° ${activeLat >= 0 ? "N" : "S"}, ${Math.abs(activeLon).toFixed(2)}° ${activeLon >= 0 ? "E" : "W"}`}
-              </button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <button className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+                  {geo.loading ? "Locating..." : `${Math.abs(activeLat).toFixed(2)}° ${activeLat >= 0 ? "N" : "S"}, ${Math.abs(activeLon).toFixed(2)}° ${activeLon >= 0 ? "E" : "W"}`}
+                </button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Edit Location</DialogTitle>
@@ -150,11 +170,35 @@ export function App() {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+            <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+                  {TIME_RANGES.find((r) => r.hours === hours)?.label ?? `Last ${hours} hours`}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="flex w-auto flex-col gap-0.5 p-1">
+                {TIME_RANGES.map((range) => (
+                  <button
+                    key={range.hours}
+                    className={`cursor-pointer rounded-sm px-3 py-1.5 text-left text-xs transition-colors hover:bg-accent ${range.hours === hours ? "bg-accent font-medium text-accent-foreground" : "text-muted-foreground"}`}
+                    onClick={() => {
+                      setHours(range.hours)
+                      setRangeOpen(false)
+                    }}
+                  >
+                    {range.label}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
 
-        {isLoading && <p>Loading...</p>}
         {error && <p className="text-red-500">Error: {error.message}</p>}
+        {isLoading && !data && (
+          <Skeleton className="h-[250px] w-full" />
+        )}
         {data && (
           <ChartContainer config={chartConfig} className="h-[250px] w-full">
             <BarChart data={chartData} accessibilityLayer>
@@ -201,7 +245,7 @@ export function App() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {lastUpdated && (
             <Tooltip>
-              <TooltipTrigger className="inline-flex cursor-default items-center rounded-md border border-border px-2 py-0.5">
+              <TooltipTrigger className="inline-flex cursor-default items-center rounded-sm border border-border px-2 py-0.5">
                 Updated {new Date(lastUpdated).toLocaleString()}
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs text-left">
@@ -216,7 +260,7 @@ export function App() {
             href="https://app.earthmover.io/marketplace/69b17d6d9b47e3348aeb99dc"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center rounded-md border border-border px-2 py-0.5 underline hover:text-foreground"
+            className="inline-flex items-center rounded-sm border border-border px-2 py-0.5 underline hover:text-foreground"
           >
             Source: NOAA MRMS on Earthmover
           </a>
