@@ -8,6 +8,7 @@ import { Label } from "./components/ui/label"
 import { Button } from "./components/ui/button"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "./components/ui/chart"
 import { Tooltip, TooltipTrigger, TooltipContent } from "./components/ui/tooltip"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "./components/ui/dialog"
 
 const MRMS_URL =
   "https://dynamical-noaa-mrms.s3.us-west-2.amazonaws.com/noaa-mrms-conus-analysis-hourly/v0.3.0.icechunk"
@@ -22,33 +23,53 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
+function getInitialLocation(): { lat: number; lon: number } | null {
+  const params = new URLSearchParams(window.location.search)
+  const lat = parseFloat(params.get("lat") ?? "")
+  const lon = parseFloat(params.get("lon") ?? "")
+  if (!Number.isNaN(lat) && !Number.isNaN(lon)) return { lat, lon }
+  return null
+}
+
 export function App() {
+  const urlLocation = useMemo(getInitialLocation, [])
   const geo = useGeolocation()
 
-  const [lat, setLat] = useState<number | null>(null)
-  const [lon, setLon] = useState<number | null>(null)
-  const [inputLat, setInputLat] = useState("")
-  const [inputLon, setInputLon] = useState("")
+  const [lat, setLat] = useState<number | null>(urlLocation?.lat ?? null)
+  const [lon, setLon] = useState<number | null>(urlLocation?.lon ?? null)
+  const [inputLat, setInputLat] = useState(urlLocation ? String(urlLocation.lat) : "")
+  const [inputLon, setInputLon] = useState(urlLocation ? String(urlLocation.lon) : "")
 
-  // Sync geolocation into state once it resolves (only if user hasn't manually set a location yet)
+  // Sync geolocation into state once it resolves (only if no URL params and user hasn't manually set a location yet)
   useEffect(() => {
-    if (geo.lat != null && geo.lon != null && lat == null) {
+    if (!urlLocation && geo.lat != null && geo.lon != null && lat == null) {
       setLat(geo.lat)
       setLon(geo.lon)
       setInputLat(geo.lat.toFixed(2))
       setInputLon(geo.lon.toFixed(2))
     }
-  }, [geo.lat, geo.lon, lat])
+  }, [geo.lat, geo.lon, lat, urlLocation])
 
-  // Fall back to defaults if geolocation fails or is denied
+  // Fall back to defaults and open dialog if geolocation fails or is denied (and no URL params)
   useEffect(() => {
-    if (!geo.loading && geo.lat == null && lat == null) {
+    if (!urlLocation && !geo.loading && geo.lat == null && lat == null) {
       setLat(DEFAULT_LAT)
       setLon(DEFAULT_LON)
       setInputLat(String(DEFAULT_LAT))
       setInputLon(String(DEFAULT_LON))
+      setDialogOpen(true)
     }
-  }, [geo.loading, geo.lat, lat])
+  }, [geo.loading, geo.lat, lat, urlLocation])
+
+  // Sync location to URL
+  useEffect(() => {
+    if (lat != null && lon != null) {
+      const url = new URL(window.location.href)
+      url.searchParams.set("lat", String(lat))
+      url.searchParams.set("lon", String(lon))
+      window.history.replaceState(null, "", url)
+    }
+  }, [lat, lon])
 
   const activeLat = lat ?? DEFAULT_LAT
   const activeLon = lon ?? DEFAULT_LON
@@ -67,6 +88,8 @@ export function App() {
     }))
   }, [data])
 
+  const [dialogOpen, setDialogOpen] = useState(false)
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const parsedLat = parseFloat(inputLat)
@@ -74,45 +97,61 @@ export function App() {
     if (!Number.isNaN(parsedLat) && !Number.isNaN(parsedLon)) {
       setLat(parsedLat)
       setLon(parsedLon)
+      setDialogOpen(false)
     }
   }
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-2xl flex-col p-6">
       <div className="flex min-w-0 flex-1 flex-col gap-4 text-sm">
-        <h1 className="text-lg font-semibold">Precipitate</h1>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold">Precipitate</h1>
 
-        <form onSubmit={handleSubmit} className="flex items-end gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="lat">Latitude</Label>
-            <Input
-              id="lat"
-              type="number"
-              step="any"
-              placeholder={geo.loading ? "Locating..." : String(DEFAULT_LAT)}
-              value={inputLat}
-              onChange={(e) => setInputLat(e.target.value)}
-              className="w-28"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="lon">Longitude</Label>
-            <Input
-              id="lon"
-              type="number"
-              step="any"
-              placeholder={geo.loading ? "Locating..." : String(DEFAULT_LON)}
-              value={inputLon}
-              onChange={(e) => setInputLon(e.target.value)}
-              className="w-28"
-            />
-          </div>
-          <Button type="submit" size="sm">
-            Update
-          </Button>
-        </form>
-
-        {geo.error && <p className="text-muted-foreground">Using default location (geolocation unavailable)</p>}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <button className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+                {geo.loading ? "Locating..." : `${Math.abs(activeLat).toFixed(2)}° ${activeLat >= 0 ? "N" : "S"}, ${Math.abs(activeLon).toFixed(2)}° ${activeLon >= 0 ? "E" : "W"}`}
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Location</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div className="flex gap-3">
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <Label htmlFor="lat">Latitude (°N)</Label>
+                    <Input
+                      id="lat"
+                      type="number"
+                      step="any"
+                      placeholder="41.43 (negative = South)"
+                      value={inputLat}
+                      onChange={(e) => setInputLat(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <Label htmlFor="lon">Longitude (°E)</Label>
+                    <Input
+                      id="lon"
+                      type="number"
+                      step="any"
+                      placeholder="-71.46 (negative = West)"
+                      value={inputLon}
+                      onChange={(e) => setInputLon(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <DialogClose asChild>
+                    <Button variant="outline" size="sm">Cancel</Button>
+                  </DialogClose>
+                  <Button type="submit" size="sm">Update</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         {isLoading && <p>Loading...</p>}
         {error && <p className="text-red-500">Error: {error.message}</p>}
