@@ -256,14 +256,12 @@ export function App() {
               </TooltipContent>
             </Tooltip>
           )}
-          <a
-            href="https://app.earthmover.io/marketplace/69b17d6d9b47e3348aeb99dc"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center rounded-sm border border-border px-2 py-0.5 underline hover:text-foreground"
-          >
-            Source: NOAA MRMS on Earthmover
-          </a>
+          <span className="inline-flex items-center gap-1.5 rounded-sm border border-border px-2 py-0.5">
+            Source: <a href="https://www.nssl.noaa.gov/projects/mrms/" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">NOAA MRMS</a> from{" "}
+            <a href="https://dynamical.org/catalog/noaa-mrms-conus-analysis-hourly/" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">dynamical.org</a>
+            {" "}via{" "}
+            <a href="https://app.earthmover.io/marketplace/69b17d6d9b47e3348aeb99dc" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Earthmover</a>
+          </span>
         </div>
       </div>
     </div>
