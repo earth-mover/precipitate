@@ -1,6 +1,6 @@
 # Precipitate
 
-An example web app for viewing precipitation data using Dynamical's Icechunk repos in the browser with wasm
+An example web app for viewing precipitation data using Dynamical's Icechunk repos in the browser with icechunk + wasm
 
 Try it out: https://precipitate.earthmover-sandbox.workers.dev
 
@@ -19,6 +19,12 @@ npm run dev
 ```
 
 ## Deploy to cloudflare
+
+Build the app
+
+```bash
+npm run build
+```
 
 Use `wrangler` to deploy to cloudflare
 
