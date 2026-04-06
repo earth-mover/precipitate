@@ -10,9 +10,6 @@ const LAT_ORIGIN = 54.995
 const LON_ORIGIN = -129.995
 const STEP = 0.01
 
-const TARGET_LAT = 41
-const TARGET_LON = -71
-
 const NUM_POINTS = 24
 
 function latIndex(lat: number) {
@@ -22,11 +19,11 @@ function lonIndex(lon: number) {
   return Math.round((lon - LON_ORIGIN) / STEP)
 }
 
-export function usePrecipitation() {
+export function usePrecipitation(lat: number, lon: number) {
   const { data: repo } = useRepo({ url: MRMS_URL })
 
   return useQuery({
-    queryKey: ["precipitation", TARGET_LAT, TARGET_LON],
+    queryKey: ["precipitation", lat, lon],
     queryFn: async () => {
       const session = await repo!.readonlySession({ branch: "main" })
       const store = session.store
@@ -37,8 +34,8 @@ export function usePrecipitation() {
 
       const timeLen = timeArr.shape[0]
       const tStart = timeLen - NUM_POINTS
-      const li = latIndex(TARGET_LAT)
-      const lo = lonIndex(TARGET_LON)
+      const li = latIndex(lat)
+      const lo = lonIndex(lon)
 
       const timeChunk = await zarr.get(timeArr, [zarr.slice(tStart, timeLen)])
       const precipChunk = await zarr.get(precip, [zarr.slice(tStart, timeLen), li, lo])
