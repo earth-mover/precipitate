@@ -7,6 +7,7 @@ import { Input } from "./components/ui/input"
 import { Label } from "./components/ui/label"
 import { Button } from "./components/ui/button"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "./components/ui/chart"
+import { Tooltip, TooltipTrigger, TooltipContent } from "./components/ui/tooltip"
 
 const MRMS_URL =
   "https://dynamical-noaa-mrms.s3.us-west-2.amazonaws.com/noaa-mrms-conus-analysis-hourly/v0.3.0.icechunk"
@@ -79,7 +80,7 @@ export function App() {
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-2xl flex-col p-6">
       <div className="flex min-w-0 flex-1 flex-col gap-4 text-sm">
-        <h1 className="text-lg font-semibold">Precipitation</h1>
+        <h1 className="text-lg font-semibold">Precipitate</h1>
 
         <form onSubmit={handleSubmit} className="flex items-end gap-3">
           <div className="flex flex-col gap-1.5">
@@ -113,7 +114,6 @@ export function App() {
 
         {geo.error && <p className="text-muted-foreground">Using default location (geolocation unavailable)</p>}
 
-        {lastUpdated && <p className="text-muted-foreground">Last updated: {new Date(lastUpdated).toLocaleString()}</p>}
         {isLoading && <p>Loading...</p>}
         {error && <p className="text-red-500">Error: {error.message}</p>}
         {data && (
@@ -128,9 +128,19 @@ export function App() {
               />
               <YAxis
                 scale="log"
-                domain={[0.001, 6]}
+                domain={[0.005, 6]}
                 allowDataOverflow
-                hide
+                ticks={[0.01, 0.1, 0.3, 2]}
+                tickFormatter={(value: number) => {
+                  if (value <= 0.01) return "Trace"
+                  if (value <= 0.1) return "Light"
+                  if (value <= 0.3) return "Moderate"
+                  return "Heavy"
+                }}
+                axisLine={false}
+                tickLine={false}
+                width={70}
+                className="text-[10px]"
               />
               <ChartTooltip
                 content={
@@ -145,41 +155,34 @@ export function App() {
                 dataKey="precipInHr"
                 fill="var(--color-precipInHr)"
                 radius={[2, 2, 0, 0]}
-              >
-                <LabelList
-                  dataKey="precipInHr"
-                  position="top"
-                  className="fill-foreground text-[10px]"
-                  content={({ x, y, width, index, value }) => {
-                    if (index == null || !chartData[index]?.isMax) return null
-                    return (
-                      <text
-                        x={(x as number) + (width as number) / 2}
-                        y={(y as number) - 6}
-                        textAnchor="middle"
-                        className="fill-foreground text-[10px]"
-                      >
-                        {(value as number).toFixed(3)} in/hr
-                      </text>
-                    )
-                  }}
-                />
-              </Bar>
+              />
             </BarChart>
           </ChartContainer>
         )}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {lastUpdated && (
+            <Tooltip>
+              <TooltipTrigger className="inline-flex cursor-default items-center rounded-md border border-border px-2 py-0.5">
+                Updated {new Date(lastUpdated).toLocaleString()}
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-left">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium">Commit {latestCommit.data?.id?.slice(0, 8)}</span>
+                  {latestCommit.data?.message && <span>{latestCommit.data.message}</span>}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          <a
+            href="https://app.earthmover.io/marketplace/69b17d6d9b47e3348aeb99dc"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center rounded-md border border-border px-2 py-0.5 underline hover:text-foreground"
+          >
+            Source: NOAA MRMS on Earthmover
+          </a>
+        </div>
       </div>
-      <footer className="pt-6 text-xs text-muted-foreground">
-        Source:{" "}
-        <a
-          href="https://app.earthmover.io/marketplace/69b17d6d9b47e3348aeb99dc"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline hover:text-foreground"
-        >
-          NOAA MRMS Hourly Precipitation on Earthmover
-        </a>
-      </footer>
     </div>
   )
 }
