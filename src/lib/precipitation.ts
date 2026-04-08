@@ -27,8 +27,10 @@ export function usePrecipitation(lat: number, lon: number, hours: number = 24) {
       const store = session.store
       const grp = zarr.root(store)
 
-      const precip = await zarr.open(grp.resolve("/precipitation_surface"), { kind: "array" })
-      const timeArr = await zarr.open.v3(grp.resolve("/time"), { kind: "array" })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zarr/icechunk store type mismatch
+      const precip = await zarr.open(grp.resolve("/precipitation_surface") as any, { kind: "array" })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zarr/icechunk store type mismatch
+      const timeArr = await zarr.open.v3(grp.resolve("/time") as any, { kind: "array" })
 
       const timeLen = timeArr.shape[0]
       const numPoints = Math.min(hours, timeLen)

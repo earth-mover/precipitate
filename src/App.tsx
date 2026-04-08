@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { usePrecipitation } from "./lib/precipitation"
 import { useLatestCommit } from "./lib/repo"
 import { useGeolocation } from "./lib/geolocation"
@@ -128,10 +128,8 @@ export function App() {
 
           <div className="flex items-center gap-2">
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <button className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
-                  {geo.loading ? "Locating..." : `${Math.abs(activeLat).toFixed(2)}° ${activeLat >= 0 ? "N" : "S"}, ${Math.abs(activeLon).toFixed(2)}° ${activeLon >= 0 ? "E" : "W"}`}
-                </button>
+              <DialogTrigger render={<button />} className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+                {geo.loading ? "Locating..." : `${Math.abs(activeLat).toFixed(2)}° ${activeLat >= 0 ? "N" : "S"}, ${Math.abs(activeLon).toFixed(2)}° ${activeLon >= 0 ? "E" : "W"}`}
               </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -163,19 +161,15 @@ export function App() {
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <DialogClose asChild>
-                    <Button variant="outline" size="sm">Cancel</Button>
-                  </DialogClose>
+                  <DialogClose render={<Button variant="outline" size="sm" />}>Cancel</DialogClose>
                   <Button type="submit" size="sm">Update</Button>
                 </div>
               </form>
             </DialogContent>
             </Dialog>
             <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
-              <PopoverTrigger asChild>
-                <button className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
-                  {TIME_RANGES.find((r) => r.hours === hours)?.label ?? `Last ${hours} hours`}
-                </button>
+              <PopoverTrigger render={<button />} className="flex cursor-pointer items-center gap-1.5 rounded-sm border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+                {TIME_RANGES.find((r) => r.hours === hours)?.label ?? `Last ${hours} hours`}
               </PopoverTrigger>
               <PopoverContent align="end" className="flex w-auto flex-col gap-0.5 p-1">
                 {TIME_RANGES.map((range) => (
